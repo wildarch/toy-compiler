@@ -2,7 +2,7 @@ use nom::types::CompleteStr;
 use nom::{alpha, alphanumeric};
 
 #[derive(Debug)]
-pub struct Ident(String);
+pub struct Ident(pub String);
 
 const KEYWORDS: &'static [&'static str] = &[
     "fun",

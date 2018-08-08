@@ -10,27 +10,22 @@ mod statement;
 mod if_cond;
 mod loops;
 mod function;
+mod document;
 mod common;
 
-use statement::{stmts, Stmt};
-use common::newline;
+pub use literal::Lit;
+pub use expression::{Expr, Op};
+pub use identifier::Ident;
+pub use statement::Stmt;
+pub use if_cond::If;
+pub use document::Document;
+
+use document::document;
 
 // TODO
+// * unit tests
 // * struct
 // * enum
-
-pub type Document = Vec<Stmt>;
-
-named!(document<CompleteStr, Document>,
-    terminated!(
-        delimited!(
-            many0!(newline),
-            apply!(stmts, 0),
-            many0!(newline)
-        ),
-        eof!()
-    )
-);
 
 pub fn parse<'a>(input: &'a str) -> Result<Document, Err<CompleteStr<'a>>> {
 //    document(input.into()).map(|(_i, r)| r)

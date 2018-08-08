@@ -1,5 +1,5 @@
 [package]
-name = "learn-nom"
+name = "toy-compiler"
 version = "0.1.0"
 authors = ["Daan de Graaf <daandegraaf9@gmail.com>"]
 

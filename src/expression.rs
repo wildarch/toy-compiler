@@ -1,5 +1,4 @@
 use nom::types::CompleteStr;
-use nom::space;
 
 use literal::{Lit, lit};
 use identifier::{ident, Ident};
@@ -34,9 +33,7 @@ named!(op<CompleteStr, Op>,
 named!(bin_op<CompleteStr, Expr>,
     do_parse!(
         left: atom >>
-        space >>
-        o: op >>
-        space >>
+        o: ws!(op) >>
         right: expr >>
         (BinOp(Box::new(left), o, Box::new(right)))
     )
@@ -55,7 +52,7 @@ named!(call<CompleteStr, Expr>,
 named!(expr_ident<CompleteStr, Expr>,
     map!(
         ident, 
-        |s| Ident(s)
+        |s| Expr::Ident(s)
     )
 );
 
@@ -65,6 +62,7 @@ named!(pub expr<CompleteStr, Expr>,
         | call 
         | expr_ident
         | lit => { |s| Lit(s) }
+        | delimited!(tag!("("), expr, tag!(")"))
     )
 );
 
@@ -79,3 +77,42 @@ named!(atom<CompleteStr, Expr>,
         | delimited!(tag!("("), ws!(bin_op), tag!(")"))
     )
 );
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn call() {
+        let parsed = super::call(r#"print("this is 3: " + (x - 2))"#.into());
+        println!("{:?}", parsed);
+        /* TODO make work
+        assert_eq!(
+            Ok(
+                (
+                    CompleteStr(""), 
+                    Call(
+                        Ident("print".into()),
+                        vec![
+                            BinOp(
+                                Box::new(Str("this is 3: ")),
+                                Add,
+                                BinOp(
+                                    Box::new(Ident("x".into())),
+                                    Min,
+                                    Lit(Int(2))
+                                )
+                            )
+                        ]
+                    )
+                )
+            ),
+            parsed
+        );
+        */
+    }
+
+    #[test]
+    fn bin_op() {
+        let parsed = super::bin_op(r#""this is 3: " + (x - 2)"#.into());
+        println!("{:?}", parsed);
+    }
+}

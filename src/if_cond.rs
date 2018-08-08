@@ -6,8 +6,8 @@ use common::{newline, indent};
 
 #[derive(Debug)]
 pub struct If {
-    cases: Vec<(Expr, Vec<Stmt>)>,
-    else_case: Option<Vec<Stmt>>
+    pub cases: Vec<(Expr, Vec<Stmt>)>,
+    pub else_case: Option<Vec<Stmt>>
 }
 
 named_args!(pub ifelse(indent_level: usize)<CompleteStr, If>,

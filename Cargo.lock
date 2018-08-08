@@ -1,11 +1,4 @@
 [[package]]
-name = "learn-nom"
-version = "0.1.0"
-dependencies = [
- "nom 4.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
-[[package]]
 name = "libc"
 version = "0.2.42"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -24,6 +17,13 @@ version = "4.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "memchr 2.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "toy-compiler"
+version = "0.1.0"
+dependencies = [
+ "nom 4.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [metadata]
