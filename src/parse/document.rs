@@ -1,7 +1,7 @@
 use nom::types::CompleteStr;
 
-use statement::{stmts, Stmt};
-use common::newline;
+use super::statement::{stmts, Stmt};
+use super::common::newline;
 
 pub type Document = Vec<Stmt>;
 

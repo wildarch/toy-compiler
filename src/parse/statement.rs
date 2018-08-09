@@ -1,13 +1,13 @@
 use nom::types::CompleteStr;
 use nom::space;
 
-use loops::*;
-use if_cond::*;
-use if_cond::If;
-use function::*;
-use expression::{expr, Expr};
-use identifier::{ident, Ident};
-use common::{newline, indent};
+use super::loops::*;
+use super::if_cond::*;
+use super::if_cond::If;
+use super::function::*;
+use super::expression::{expr, Expr};
+use super::identifier::{ident, Ident};
+use super::common::{newline, indent};
 
 #[derive(Debug)]
 pub enum Stmt {
