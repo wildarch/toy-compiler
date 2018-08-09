@@ -1,8 +1,8 @@
 use nom::types::CompleteStr;
 
-use expression::{Expr, expr};
-use statement::{Stmt, stmts};
-use common::{newline, indent};
+use super::expression::{Expr, expr};
+use super::statement::{Stmt, stmts};
+use super::common::{newline, indent};
 
 #[derive(Debug)]
 pub struct If {

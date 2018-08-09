@@ -5,3 +5,8 @@ rust:
     - nightly
 
 cache: cargo
+
+addons:
+    apt:
+        packages:
+            - nodejs

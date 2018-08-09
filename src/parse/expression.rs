@@ -1,8 +1,8 @@
 use nom::types::CompleteStr;
 
-use literal::{Lit, lit};
-use identifier::{ident, Ident};
-use common::comma_sep;
+use super::literal::{Lit, lit};
+use super::identifier::{ident, Ident};
+use super::common::comma_sep;
 
 #[derive(Debug)]
 pub enum Expr {
