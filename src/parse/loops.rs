@@ -1,11 +1,11 @@
-use nom::types::CompleteStr;
 use nom::space;
+use nom::types::CompleteStr;
 
-use super::statement::Stmt::*;
-use super::statement::{Stmt, stmts};
+use super::common::{indent, newline};
 use super::expression::expr;
 use super::identifier::ident;
-use super::common::{indent, newline};
+use super::statement::Stmt::*;
+use super::statement::{stmts, Stmt};
 
 named_args!(pub while_loop(indent_level: usize)<CompleteStr, Stmt>,
     do_parse!(

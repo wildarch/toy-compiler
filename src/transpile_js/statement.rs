@@ -1,12 +1,12 @@
 use parse::Stmt::*;
-use parse::{Stmt, Expr, Ident};
+use parse::{Expr, Ident, Stmt};
 
-use super::loops::*;
-use super::if_cond::transpile_if;
+use super::common::indent;
 use super::expression::transpile_expr;
 use super::function::transpile_fun;
 use super::identifier::transpile_ident;
-use super::common::indent;
+use super::if_cond::transpile_if;
+use super::loops::*;
 
 // TODO use let instead of var (and keep track of redeclarations)
 fn transpile_assign(var: Ident, val: Expr) -> String {
@@ -24,23 +24,22 @@ fn is_block(stmt: &Stmt) -> bool {
         Break => false,
         Continue => false,
         Loop(_) => true,
-        For(_, _, _) => true
+        For(_, _, _) => true,
     }
 }
 
 pub fn transpile_stmts(stmts: Vec<Stmt>, indent_level: usize) -> Vec<String> {
-    stmts.into_iter()
+    stmts
+        .into_iter()
         .map(|stmt| {
             let block = is_block(&stmt);
             let trans = transpile_stmt(stmt, indent_level);
             if block {
                 trans
-            }
-            else {
+            } else {
                 format!("{};", trans)
             }
-        })
-        .collect()
+        }).collect()
 }
 
 pub fn transpile_stmt(s: Stmt, indent_level: usize) -> String {
@@ -60,11 +59,11 @@ pub fn transpile_stmt(s: Stmt, indent_level: usize) -> String {
 
 #[cfg(test)]
 mod tests {
-    use parse::Expr::*;
     use parse::Expr;
+    use parse::Expr::*;
+    use parse::Ident;
     use parse::Lit::*;
     use parse::Op::*;
-    use parse::Ident;
 
     #[test]
     fn transpile_assign() {
@@ -72,16 +71,12 @@ mod tests {
             super::transpile_assign(
                 Ident("yield".into()),
                 BinOp(
-                    Box::new(
-                        Call(
-                            Ident("calc".into()),
-                            vec![Expr::Ident(Ident("x".into()))]
-                        )
-                    ),
+                    Box::new(Call(
+                        Ident("calc".into()),
+                        vec![Expr::Ident(Ident("x".into()))]
+                    )),
                     Min,
-                    Box::new(
-                        Lit(Int(42))
-                    )
+                    Box::new(Lit(Int(42)))
                 )
             ),
             "var $yield = (calc(x) - 42)"

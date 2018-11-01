@@ -1,7 +1,7 @@
 use nom::types::CompleteStr;
 
-use super::statement::{stmts, Stmt};
 use super::common::newline;
+use super::statement::{stmts, Stmt};
 
 pub type Document = Vec<Stmt>;
 
@@ -15,4 +15,3 @@ named!(pub document<CompleteStr, Document>,
         eof!()
     )
 );
-

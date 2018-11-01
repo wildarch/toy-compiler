@@ -1,9 +1,9 @@
-use parse::{Stmt, Expr, Ident};
+use parse::{Expr, Ident, Stmt};
 
-use super::statement::transpile_stmts;
+use super::common::indent;
 use super::expression::transpile_expr;
 use super::identifier::transpile_ident;
-use super::common::indent;
+use super::statement::transpile_stmts;
 
 pub fn transpile_while(cond: Expr, body: Vec<Stmt>, indent_level: usize) -> String {
     let head = indent(format!("while({}) {{", transpile_expr(cond)), indent_level);
@@ -25,15 +25,14 @@ pub fn transpile_loop(body: Vec<Stmt>, indent_level: usize) -> String {
     body_trans.join("\n")
 }
 
-pub fn transpile_for(var: Ident, list: Expr, 
-                     body: Vec<Stmt>, indent_level: usize) -> String {
+pub fn transpile_for(var: Ident, list: Expr, body: Vec<Stmt>, indent_level: usize) -> String {
     let head = indent(
         format!(
-            "for(var {} of {}) {{", 
+            "for(var {} of {}) {{",
             transpile_ident(var),
             transpile_expr(list)
         ),
-        indent_level
+        indent_level,
     );
     let mut body_trans = transpile_stmts(body, indent_level + 1);
     let foot = indent("}".into(), indent_level);
@@ -45,27 +44,22 @@ pub fn transpile_for(var: Ident, list: Expr,
 
 #[cfg(test)]
 mod tests {
-    use parse::Stmt::*;
-    use parse::Expr::*;
     use parse::Expr;
+    use parse::Expr::*;
+    use parse::Ident;
     use parse::Lit::*;
     use parse::Op::*;
-    use parse::Ident;
-
-
+    use parse::Stmt::*;
 
     #[test]
     fn transpile_while() {
         assert_eq!(
             super::transpile_while(
                 Expr::Ident(Ident("a".into())),
-                vec![While(
-                    Expr::Ident(Ident("b".into())),
-                    vec![Break]
-                )],
+                vec![While(Expr::Ident(Ident("b".into())), vec![Break])],
                 2
             ),
-r#"        while(a) {
+            r#"        while(a) {
             while(b) {
                 break;
             }
@@ -77,18 +71,14 @@ r#"        while(a) {
     fn transpile_loop() {
         assert_eq!(
             super::transpile_loop(
-                vec![
-                    Expr(
-                        BinOp(
-                            Box::new(Lit(Int(5))),
-                            Min,
-                            Box::new(Lit(Int(1)))
-                        )
-                    )
-                ],
+                vec![Expr(BinOp(
+                    Box::new(Lit(Int(5))),
+                    Min,
+                    Box::new(Lit(Int(1)))
+                ))],
                 0
             ),
-r#"while(true) {
+            r#"while(true) {
     (5 - 1);
 }"#
         );
@@ -99,21 +89,14 @@ r#"while(true) {
         assert_eq!(
             super::transpile_for(
                 Ident("x".into()),
-                Lit(List(vec![
-                    Lit(Int(0)),
-                    Lit(Int(1))
-                ])),
-                vec![
-                    Expr(Call(
-                        Ident("print".into()),
-                        vec![
-                            Expr::Ident(Ident("x".into()))
-                        ]
-                    ))
-                ],
+                Lit(List(vec![Lit(Int(0)), Lit(Int(1))])),
+                vec![Expr(Call(
+                    Ident("print".into()),
+                    vec![Expr::Ident(Ident("x".into()))]
+                ))],
                 0
             ),
-r#"for(var x of [0, 1]) {
+            r#"for(var x of [0, 1]) {
     print(x);
 }"#
         );

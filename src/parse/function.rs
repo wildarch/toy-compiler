@@ -1,11 +1,11 @@
-use nom::types::CompleteStr;
 use nom::space;
+use nom::types::CompleteStr;
 
-use super::common::{indent, newline, comma_sep};
-use super::statement::Stmt::{Fun, Return};
-use super::statement::{Stmt, stmts};
+use super::common::{comma_sep, indent, newline};
 use super::expression::expr;
 use super::identifier::ident;
+use super::statement::Stmt::{Fun, Return};
+use super::statement::{stmts, Stmt};
 
 named_args!(pub fun(indent_level: usize)<CompleteStr, Stmt>,
     do_parse!(

@@ -1,8 +1,8 @@
 use nom::types::CompleteStr;
 
-use super::literal::{Lit, lit};
-use super::identifier::{ident, Ident};
 use super::common::comma_sep;
+use super::identifier::{ident, Ident};
+use super::literal::{lit, Lit};
 
 #[derive(Debug)]
 pub enum Expr {
@@ -28,7 +28,6 @@ named!(op<CompleteStr, Op>,
         tag!("==") => { |_| Eq }
     )
 );
-
 
 named!(bin_op<CompleteStr, Expr>,
     do_parse!(

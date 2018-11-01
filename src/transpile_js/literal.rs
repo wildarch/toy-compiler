@@ -1,5 +1,5 @@
 use parse::Lit::*;
-use parse::{Lit, Expr};
+use parse::{Expr, Lit};
 
 use super::expression::transpile_expr;
 
@@ -9,14 +9,12 @@ pub fn transpile_lit(l: Lit) -> String {
         Bool(b) => b.to_string(),
         Float(f) => f.to_string(),
         Str(s) => format!("\"{}\"", s),
-        List(vals) => transpile_list(vals)
+        List(vals) => transpile_list(vals),
     }
 }
 
 fn transpile_list(vals: Vec<Expr>) -> String {
-    let vals_trans: Vec<String> = vals.into_iter()
-        .map(transpile_expr)
-        .collect();
+    let vals_trans: Vec<String> = vals.into_iter().map(transpile_expr).collect();
     format!("[{}]", vals_trans.join(", "))
 }
 

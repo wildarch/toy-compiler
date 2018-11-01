@@ -4,4 +4,3 @@ pub fn indent(mut s: String, level: usize) -> String {
     }
     s
 }
-

@@ -5,16 +5,7 @@ use nom::{alpha, alphanumeric};
 pub struct Ident(pub String);
 
 const KEYWORDS: &'static [&'static str] = &[
-    "fun",
-    "if",
-    "elif",
-    "else",
-    "return",
-    "while",
-    "break",
-    "continue",
-    "loop",
-    "for"
+    "fun", "if", "elif", "else", "return", "while", "break", "continue", "loop", "for",
 ];
 
 named!(pub ident<CompleteStr, Ident>, 

@@ -1,8 +1,8 @@
-use nom::types::CompleteStr;
 use nom::digit;
+use nom::types::CompleteStr;
 
-use super::expression::{Expr, expr};
 use super::common::comma_sep;
+use super::expression::{expr, Expr};
 
 #[derive(Debug)]
 pub enum Lit {

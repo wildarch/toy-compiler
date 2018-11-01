@@ -1,13 +1,13 @@
 use nom::types::CompleteStr;
 
-use super::expression::{Expr, expr};
-use super::statement::{Stmt, stmts};
-use super::common::{newline, indent};
+use super::common::{indent, newline};
+use super::expression::{expr, Expr};
+use super::statement::{stmts, Stmt};
 
 #[derive(Debug)]
 pub struct If {
     pub cases: Vec<(Expr, Vec<Stmt>)>,
-    pub else_case: Option<Vec<Stmt>>
+    pub else_case: Option<Vec<Stmt>>,
 }
 
 named_args!(pub ifelse(indent_level: usize)<CompleteStr, If>,

@@ -53,8 +53,7 @@ fun show_loops():
 
 "#;
 
-    let expected = 
-r#"Hello from main!
+    let expected = r#"Hello from main!
 this is 3: 3
 the universe is intact
 the universe is intact (again)
@@ -80,10 +79,14 @@ for: 3
         .expect("Failed to spawn nodejs process");
     {
         let stdin = node_process.stdin.as_mut().expect("Failed to open stdin");
-        stdin.write_all(transpiled.as_bytes()).expect("Failed to write to stdin");
+        stdin
+            .write_all(transpiled.as_bytes())
+            .expect("Failed to write to stdin");
     }
 
-    let output = node_process.wait_with_output().expect("Failed to read stdout");
+    let output = node_process
+        .wait_with_output()
+        .expect("Failed to read stdout");
     let std_output = String::from_utf8_lossy(&output.stdout);
     assert_eq!(std_output, expected);
 }

@@ -1,8 +1,8 @@
-use parse::{If, Stmt, Expr};
+use parse::{Expr, If, Stmt};
 
 use super::common::indent;
-use super::statement::transpile_stmts;
 use super::expression::transpile_expr;
+use super::statement::transpile_stmts;
 
 pub fn transpile_if(if_cond: If, indent_level: usize) -> String {
     // TODO check this works correctly when used with multiple statements
@@ -12,7 +12,10 @@ pub fn transpile_if(if_cond: If, indent_level: usize) -> String {
     let mut cases = if_cond.cases.into_iter();
     let (base_cond, base_body) = cases.next().unwrap();
 
-    let if_head = indent(format!("if({}) {{", transpile_expr(base_cond)), indent_level);
+    let if_head = indent(
+        format!("if({}) {{", transpile_expr(base_cond)),
+        indent_level,
+    );
     let mut if_trans = transpile_stmts(base_body, indent_level + 1);
     let if_foot = indent("}".into(), indent_level);
 
@@ -31,14 +34,16 @@ pub fn transpile_if(if_cond: If, indent_level: usize) -> String {
         if_trans.push(else_head);
         if_trans.append(&mut else_trans);
         if_trans.push(else_foot);
-
     }
 
     if_trans.join("\n")
 }
 
 fn transpile_elif(cond: Expr, body: Vec<Stmt>, indent_level: usize) -> Vec<String> {
-    let head = indent(format!("else if({}) {{", transpile_expr(cond)), indent_level);
+    let head = indent(
+        format!("else if({}) {{", transpile_expr(cond)),
+        indent_level,
+    );
     let mut body = transpile_stmts(body, indent_level + 1);
     let foot = indent("}".into(), indent_level);
 
@@ -49,37 +54,35 @@ fn transpile_elif(cond: Expr, body: Vec<Stmt>, indent_level: usize) -> Vec<Strin
 
 #[cfg(test)]
 mod tests {
-    use parse::If;
-    use parse::Stmt::*;
-    use parse::Expr::*;
     use parse::Expr;
+    use parse::Expr::*;
+    use parse::Ident;
+    use parse::If;
     use parse::Lit::*;
     use parse::Op::*;
-    use parse::Ident;
+    use parse::Stmt::*;
 
     #[test]
     fn transpile_if() {
         assert_eq!(
-            super::transpile_if(If {
-                cases: vec![
-                    (
-                        BinOp(
-                            Box::new(Expr::Ident(Ident("a".into()))),
-                            Eq,
-                            Box::new(Lit(Bool(true)))
+            super::transpile_if(
+                If {
+                    cases: vec![
+                        (
+                            BinOp(
+                                Box::new(Expr::Ident(Ident("a".into()))),
+                                Eq,
+                                Box::new(Lit(Bool(true)))
+                            ),
+                            vec![Break]
                         ),
-                        vec![Break]
-                    ),
-                    (
-                        Expr::Ident(Ident("b".into())),
-                        vec![Continue]
-                    )
-                ],
-                else_case: Some(vec![
-                    Expr(Call(Ident("test".into()), vec![]))
-                ])
-            }, 0),
-r#"if((a === true)) {
+                        (Expr::Ident(Ident("b".into())), vec![Continue])
+                    ],
+                    else_case: Some(vec![Expr(Call(Ident("test".into()), vec![]))])
+                },
+                0
+            ),
+            r#"if((a === true)) {
     break;
 }
 else if(b) {

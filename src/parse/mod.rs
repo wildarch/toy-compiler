@@ -1,28 +1,26 @@
 use nom::types::CompleteStr;
 use nom::Err;
 
-mod literal;
-mod expression;
-mod identifier;
-mod statement;
-mod if_cond;
-mod loops;
-mod function;
-mod document;
 mod common;
+mod document;
+mod expression;
+mod function;
+mod identifier;
+mod if_cond;
+mod literal;
+mod loops;
+mod statement;
 
-pub use self::literal::Lit;
+pub use self::document::Document;
 pub use self::expression::{Expr, Op};
 pub use self::identifier::Ident;
-pub use self::statement::Stmt;
 pub use self::if_cond::If;
-pub use self::document::Document;
+pub use self::literal::Lit;
+pub use self::statement::Stmt;
 
 use self::document::document;
 
-
 // TODO
-// * unit tests
 // * struct
 // * enum
 

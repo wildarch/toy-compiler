@@ -7,8 +7,8 @@ mod literal;
 mod loops;
 mod statement;
 
-use parse::Document;
 use self::statement::transpile_stmts;
+use parse::Document;
 
 const STANDARD_LIB: &'static str = r#"
 function print(x) {
@@ -19,7 +19,7 @@ main();
 "#;
 
 pub fn transpile(doc: Document) -> String {
-        let mut program = transpile_stmts(doc, 0).join("\n\n");
-        program.push_str(STANDARD_LIB);
-        return program
+    let mut program = transpile_stmts(doc, 0).join("\n\n");
+    program.push_str(STANDARD_LIB);
+    return program;
 }

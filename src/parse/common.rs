@@ -21,8 +21,9 @@ named_args!(pub indent(level: usize)<CompleteStr, Vec<CompleteStr>>,
     count!(tag!(" "), INDENT_SIZE * level)
 );
 
-#[cfg(test)] use nom::IResult;
-#[cfg(test)] 
+#[cfg(test)]
+use nom::IResult;
+#[cfg(test)]
 pub fn assert_parsed<T>(r: IResult<CompleteStr, T>) {
     let (remaining_input, _) = r.expect("Parsing failed");
     assert_eq!(remaining_input, CompleteStr(""));
