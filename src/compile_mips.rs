@@ -56,6 +56,8 @@ impl Display for MipsInst {
 pub enum DataValue {
     Asciiz(String),
     Word(i32),
+    // Custom type
+    List(usize),
 }
 
 impl Display for DataValue {
@@ -63,6 +65,7 @@ impl Display for DataValue {
         match self {
             DataValue::Asciiz(s) => write!(f, ".asciiz \"{}\"", s),
             DataValue::Word(n) => write!(f, ".word {}", n),
+            DataValue::List(n) => write!(f, ".word {} \n.space {}", n, n * 4),
         }
     }
 }
@@ -120,7 +123,17 @@ impl<'a> Compiler<'a> {
                     .insert(label.clone(), DataValue::Asciiz(s.to_string()));
                 (reg, vec![La(reg, label)])
             }
-            Lit::List(_l) => unimplemented!(),
+            Lit::List(l) => {
+                self.data.insert(label.clone(), DataValue::List(l.len()));
+                let mut inst = vec![La(reg, label)];
+                for (i, e) in l.iter().enumerate() {
+                    let (sub_reg, sub_inst) = self.expr(e);
+                    inst.extend(sub_inst);
+                    inst.push(Sw(sub_reg, ((i + 1) * 4) as i16, reg));
+                    self.return_register(sub_reg);
+                }
+                (reg, inst)
+            }
         }
     }
 
@@ -279,7 +292,45 @@ impl<'a> Compiler<'a> {
                 self.break_label = None;
                 inst
             }
-            Stmt::For(var, expr, body) => unimplemented!(),
+            Stmt::For(var, expr, body) => {
+                let var = Label(var.0.clone());
+                self.data.insert(var.clone(), DataValue::Word(0));
+                let (iter_reg, mut inst) = self.expr(expr);
+                let counter = self.temp_reg();
+                inst.push(Lw(counter, 0, iter_reg));
+
+                // Loop setup
+                let start_label = self.label();
+                let end_label = self.label();
+                self.continue_label = Some(start_label.clone());
+                self.break_label = Some(end_label.clone());
+                inst.push(MipsInst::Label(start_label.clone()));
+
+                // Move to the next item
+                inst.push(Addi(iter_reg, iter_reg, 4));
+                let addr_reg = self.temp_reg();
+                inst.push(La(addr_reg, var));
+                let val_reg = self.temp_reg();
+                inst.push(Lw(val_reg, 0, iter_reg));
+                inst.push(Sw(val_reg, 0, addr_reg));
+                self.return_register(val_reg);
+                self.return_register(addr_reg);
+
+                // Check and then decrement counter
+                inst.push(Ble(counter, Zero, end_label.clone()));
+                inst.push(Addi(counter, counter, -1));
+
+                for stmt in body {
+                    inst.extend(self.stmt(stmt));
+                }
+                inst.push(B(start_label.clone()));
+
+                // Loop teardown
+                inst.push(MipsInst::Label(end_label));
+                self.continue_label = None;
+                self.break_label = None;
+                inst
+            }
         }
     }
 
