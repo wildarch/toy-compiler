@@ -29,6 +29,7 @@ fn transpile_binop(op: Op) -> String {
         Add => "+".into(),
         Min => "-".into(),
         Eq => "===".into(),
+        Gt => ">".into(),
     }
 }
 

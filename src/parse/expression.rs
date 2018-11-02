@@ -18,6 +18,7 @@ pub enum Op {
     Add,
     Min,
     Eq,
+    Gt,
 }
 use self::Op::*;
 
@@ -25,7 +26,8 @@ named!(op<CompleteStr, Op>,
     alt!(
         tag!("+") => { |_| Add } |
         tag!("-") => { |_| Min } |
-        tag!("==") => { |_| Eq }
+        tag!("==") => { |_| Eq } |
+        tag!(">") => { |_| Gt }
     )
 );
 

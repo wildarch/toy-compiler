@@ -8,13 +8,22 @@ use std::fmt::{Display, Error as FormatError, Formatter};
 pub enum MipsInst {
     La(Register, Label),
     Add(Register, Register, Register),
+    Addi(Register, Register, i32),
     Sub(Register, Register, Register),
     Seq(Register, Register, Register),
+    Sgt(Register, Register, Register),
     Move(Register, Register),
     Jal(Label),
     Li(Register, i32),
     Jr(Register),
     SysCall,
+    // Actually just 15 bits
+    Sw(Register, i16, Register),
+    Lw(Register, i16, Register),
+    B(Label),
+    Ble(Register, Register, Label),
+    // Not really an instruction
+    Label(Label),
 }
 use self::MipsInst::*;
 
@@ -23,13 +32,20 @@ impl Display for MipsInst {
         match self {
             La(r, l) => write!(f, "la   {}, {}", r, l),
             Add(a, b, c) => write!(f, "add  {}, {}, {}", a, b, c),
+            Addi(a, b, c) => write!(f, "addi {}, {}, {}", a, b, c),
             Sub(a, b, c) => write!(f, "sub  {}, {}, {}", a, b, c),
             Seq(a, b, c) => write!(f, "seq  {}, {}, {}", a, b, c),
+            Sgt(a, b, c) => write!(f, "sgt  {}, {}, {}", a, b, c),
             Move(a, b) => write!(f, "move {}, {}", a, b),
             Jal(l) => write!(f, "jal  {}", l),
             Li(r, i) => write!(f, "li   {}, {}", r, i),
             Jr(r) => write!(f, "jr   {}", r),
             SysCall => write!(f, "syscall"),
+            Sw(v, i, d) => write!(f, "sw   {}, {}({})", v, i, d),
+            Lw(d, i, v) => write!(f, "lw   {}, {}({})", d, i, v),
+            B(l) => write!(f, "b    {}", l),
+            Ble(a, b, l) => write!(f, "ble  {}, {}, {}", a, b, l),
+            MipsInst::Label(l) => write!(f, "{}:", l),
         }
     }
 }
@@ -37,12 +53,14 @@ impl Display for MipsInst {
 #[derive(Debug)]
 pub enum DataValue {
     Asciiz(String),
+    Word(i32),
 }
 
 impl Display for DataValue {
     fn fmt(&self, f: &mut Formatter) -> Result<(), FormatError> {
         match self {
             DataValue::Asciiz(s) => write!(f, ".asciiz \"{}\"", s),
+            DataValue::Word(n) => write!(f, ".word {}", n),
         }
     }
 }
@@ -76,9 +94,11 @@ impl<'a> Compiler<'a> {
     }
 
     fn temp_reg(&mut self) -> Register {
-        self.free_temp_regs
+        let r = self
+            .free_temp_regs
             .pop()
-            .expect("No more registers available")
+            .expect("No more registers available");
+        r
     }
 
     fn label(&mut self) -> Label {
@@ -100,13 +120,21 @@ impl<'a> Compiler<'a> {
         }
     }
 
+    pub fn return_register(&mut self, r: Register) {
+        self.free_temp_regs.push(r);
+    }
+
     pub fn expr(&mut self, e: &Expr) -> (Register, Vec<MipsInst>) {
         match e {
             Expr::Lit(l) => {
                 let label = self.label();
                 self.put_lit(label, l)
             }
-            Expr::Ident(_i) => unimplemented!(),
+            Expr::Ident(i) => {
+                let reg = self.temp_reg();
+                let label = Label(i.0.clone());
+                (reg, vec![La(reg, label), Lw(reg, 0, reg)])
+            }
             Expr::BinOp(a, op, b) => {
                 let mut inst = Vec::new();
                 let (reg_a, inst_a) = self.expr(&a);
@@ -114,13 +142,14 @@ impl<'a> Compiler<'a> {
                 let (reg_b, inst_b) = self.expr(&b);
                 inst.extend(inst_b);
 
-                let reg = self.temp_reg();
                 match op {
-                    Op::Add => inst.push(Add(reg, reg_a, reg_b)),
-                    Op::Min => inst.push(Sub(reg, reg_a, reg_b)),
-                    Op::Eq => inst.push(Seq(reg, reg_a, reg_b)),
+                    Op::Add => inst.push(Add(reg_a, reg_a, reg_b)),
+                    Op::Min => inst.push(Sub(reg_a, reg_a, reg_b)),
+                    Op::Eq => inst.push(Seq(reg_a, reg_a, reg_b)),
+                    Op::Gt => inst.push(Sgt(reg_a, reg_a, reg_b)),
                 };
-                (reg, inst)
+                self.return_register(reg_b);
+                (reg_a, inst)
             }
             Expr::Call(fname, params) => {
                 let mut arg_regs = vec![A3, A2, A1, A0];
@@ -131,7 +160,13 @@ impl<'a> Compiler<'a> {
                     let arg_reg = arg_regs.pop().expect("Too many arguments");
                     inst.push(Move(arg_reg, reg));
                 }
-                inst.push(Jal(Label(fname.0.to_string())));
+                inst.extend(vec![
+                    Addi(Sp, Sp, -4),
+                    Sw(Ra, 0, Sp),
+                    Jal(Label(fname.0.to_string())),
+                    Lw(Ra, 0, Sp),
+                    Addi(Sp, Sp, 4),
+                ]);
                 (V0, inst)
             }
         }
@@ -154,6 +189,38 @@ impl<'a> Compiler<'a> {
                 self.text.insert(Label(fname), body_inst);
                 // Put into the text section instead
                 vec![]
+            }
+            Stmt::Assign(i, e) => {
+                let (reg, mut inst) = self.expr(e);
+                let label = Label(i.0.clone());
+                if !self.data.contains_key(&label) {
+                    self.data.insert(label.clone(), DataValue::Word(0));
+                }
+                inst.extend(vec![La(A0, label), Sw(reg, 0, A0)]);
+                self.return_register(reg);
+                inst
+            }
+            Stmt::If(ifs) => {
+                let mut inst = Vec::new();
+                let end_label = self.label();
+                for (cond, body) in ifs.cases.iter() {
+                    let (cond_reg, cond_inst) = self.expr(cond);
+                    inst.extend(cond_inst);
+                    let skip_label = self.label();
+                    inst.push(Ble(cond_reg, Zero, skip_label.clone()));
+                    for stmt in body.iter() {
+                        inst.extend(self.stmt(stmt));
+                    }
+                    inst.push(B(end_label.clone()));
+                    inst.push(MipsInst::Label(skip_label));
+                }
+                if let Some(ref body) = ifs.else_case {
+                    for stmt in body.iter() {
+                        inst.extend(self.stmt(stmt));
+                    }
+                }
+                inst.push(MipsInst::Label(end_label));
+                inst
             }
             _ => unimplemented!(),
         }
@@ -188,7 +255,30 @@ impl Display for MipsProgram {
     print:
         li   $v0, 4
         syscall
+
+        # Add newline
+        li   $a0, 10
+        sb   $a0, -2($sp)
+        sb   $zero, -1($sp)
+        addi $a0, $sp, -2
+        syscall
+
+    print_end:
         jr   $ra
+    print_int:
+        li   $v0, 1
+        syscall
+
+        # Add newline
+        li   $v0, 4
+        li   $a0, 10
+        sb   $a0, -2($sp)
+        sb   $zero, -1($sp)
+        addi $a0, $sp, -2
+        syscall
+
+        jr   $ra
+
 # END Standard library
                  "#
         )?;
