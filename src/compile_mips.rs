@@ -12,6 +12,7 @@ pub enum MipsInst {
     Sub(Register, Register, Register),
     Seq(Register, Register, Register),
     Sgt(Register, Register, Register),
+    Slt(Register, Register, Register),
     Move(Register, Register),
     Jal(Label),
     Li(Register, i32),
@@ -36,6 +37,7 @@ impl Display for MipsInst {
             Sub(a, b, c) => write!(f, "sub  {}, {}, {}", a, b, c),
             Seq(a, b, c) => write!(f, "seq  {}, {}, {}", a, b, c),
             Sgt(a, b, c) => write!(f, "sgt  {}, {}, {}", a, b, c),
+            Slt(a, b, c) => write!(f, "slt  {}, {}, {}", a, b, c),
             Move(a, b) => write!(f, "move {}, {}", a, b),
             Jal(l) => write!(f, "jal  {}", l),
             Li(r, i) => write!(f, "li   {}, {}", r, i),
@@ -80,6 +82,8 @@ struct Compiler<'a> {
     text: HashMap<Label, Vec<MipsInst>>,
     free_temp_regs: Vec<Register>,
     name_gen: Generator<'a>,
+    continue_label: Option<Label>,
+    break_label: Option<Label>,
 }
 
 impl<'a> Compiler<'a> {
@@ -147,6 +151,7 @@ impl<'a> Compiler<'a> {
                     Op::Min => inst.push(Sub(reg_a, reg_a, reg_b)),
                     Op::Eq => inst.push(Seq(reg_a, reg_a, reg_b)),
                     Op::Gt => inst.push(Sgt(reg_a, reg_a, reg_b)),
+                    Op::Lt => inst.push(Slt(reg_a, reg_a, reg_b)),
                 };
                 self.return_register(reg_b);
                 (reg_a, inst)
@@ -161,9 +166,11 @@ impl<'a> Compiler<'a> {
                     inst.push(Move(arg_reg, reg));
                 }
                 inst.extend(vec![
+                    // Push return address on stack
                     Addi(Sp, Sp, -4),
                     Sw(Ra, 0, Sp),
                     Jal(Label(fname.0.to_string())),
+                    // Pop return address from stack
                     Lw(Ra, 0, Sp),
                     Addi(Sp, Sp, 4),
                 ]);
@@ -222,7 +229,57 @@ impl<'a> Compiler<'a> {
                 inst.push(MipsInst::Label(end_label));
                 inst
             }
-            _ => unimplemented!(),
+            Stmt::Return(e) => {
+                let (reg, mut inst) = self.expr(e);
+                inst.push(Move(V0, reg));
+                inst
+            }
+            Stmt::While(cond, body) => {
+                let mut inst = Vec::new();
+                let start_label = self.label();
+                let end_label = self.label();
+                self.continue_label = Some(start_label.clone());
+                self.break_label = Some(end_label.clone());
+                inst.push(MipsInst::Label(start_label.clone()));
+
+                let (cond_reg, cond_inst) = self.expr(cond);
+                inst.extend(cond_inst);
+                inst.push(Ble(cond_reg, Zero, end_label.clone()));
+
+                for stmt in body {
+                    inst.extend(self.stmt(stmt));
+                }
+                inst.push(B(start_label.clone()));
+
+                inst.push(MipsInst::Label(end_label));
+                self.continue_label = None;
+                self.break_label = None;
+                inst
+            }
+            Stmt::Break => vec![B(self.break_label.clone().expect("No label to break to!"))],
+            Stmt::Continue => vec![B(self
+                .continue_label
+                .clone()
+                .expect("No label to continue to!"))],
+            Stmt::Loop(body) => {
+                let mut inst = Vec::new();
+                let start_label = self.label();
+                let end_label = self.label();
+                self.continue_label = Some(start_label.clone());
+                self.break_label = Some(end_label.clone());
+                inst.push(MipsInst::Label(start_label.clone()));
+
+                for stmt in body {
+                    inst.extend(self.stmt(stmt));
+                }
+                inst.push(B(start_label.clone()));
+
+                inst.push(MipsInst::Label(end_label));
+                self.continue_label = None;
+                self.break_label = None;
+                inst
+            }
+            Stmt::For(var, expr, body) => unimplemented!(),
         }
     }
 

@@ -30,6 +30,7 @@ fn transpile_binop(op: Op) -> String {
         Min => "-".into(),
         Eq => "===".into(),
         Gt => ">".into(),
+        Lt => "<".into(),
     }
 }
 
