@@ -39,7 +39,8 @@ pub fn transpile_stmts(stmts: Vec<Stmt>, indent_level: usize) -> Vec<String> {
             } else {
                 format!("{};", trans)
             }
-        }).collect()
+        })
+        .collect()
 }
 
 pub fn transpile_stmt(s: Stmt, indent_level: usize) -> String {

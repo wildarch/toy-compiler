@@ -5,4 +5,5 @@ authors = ["Daan de Graaf <daandegraaf9@gmail.com>"]
 
 [dependencies]
 nom = "4.0.0"
-names = "0.11.0"
+rand = "0.6"
+names = "0.11"

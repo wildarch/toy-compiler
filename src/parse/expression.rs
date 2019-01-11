@@ -91,7 +91,7 @@ mod tests {
         assert_eq!(
             Ok(
                 (
-                    CompleteStr(""), 
+                    CompleteStr(""),
                     Call(
                         Ident("print".into()),
                         vec![
