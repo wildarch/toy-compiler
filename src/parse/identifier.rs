@@ -1,7 +1,7 @@
 use nom::types::CompleteStr;
 use nom::{alpha, alphanumeric};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Ident(pub String);
 
 const KEYWORDS: &'static [&'static str] = &[

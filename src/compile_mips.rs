@@ -1,5 +1,5 @@
 use names::Generator;
-use parse::{Document, Expr, Lit, Op, Stmt};
+use parse::{Document, Expr, Ident, Lit, Op, Stmt};
 
 use std::collections::HashMap;
 use std::fmt::{Display, Error as FormatError, Formatter};
@@ -87,6 +87,7 @@ struct Compiler<'a> {
     name_gen: Generator<'a>,
     continue_label: Option<Label>,
     break_label: Option<Label>,
+    fn_params: Vec<Ident>,
 }
 
 impl<'a> Compiler<'a> {
@@ -149,6 +150,11 @@ impl<'a> Compiler<'a> {
             }
             Expr::Ident(i) => {
                 let reg = self.temp_reg();
+                for (label, arg_reg) in self.fn_params.iter().zip(Register::args().into_iter()) {
+                    if label.0 == i.0 {
+                        return (reg, vec![Move(reg, *arg_reg)]);
+                    }
+                }
                 let label = Label(i.0.clone());
                 (reg, vec![La(reg, label), Lw(reg, 0, reg)])
             }
@@ -170,23 +176,33 @@ impl<'a> Compiler<'a> {
                 (reg_a, inst)
             }
             Expr::Call(fname, params) => {
-                let mut arg_regs = vec![A3, A2, A1, A0];
+                let mut arg_regs = Register::args().to_vec();
+                arg_regs.reverse();
                 let mut inst = Vec::new();
+                const BACKED_UP_REGS: &'static [Register] =
+                    &[Ra, A0, A1, A2, A3, T0, T1, T2, T4, T5, T6, T7, T8, T9];
+                // Backup registers
+                inst.push(Addi(Sp, Sp, -4 * BACKED_UP_REGS.len() as i32));
+                for (i, reg) in BACKED_UP_REGS.iter().enumerate() {
+                    inst.push(Sw(*reg, i as i16 * 4, Sp));
+                }
+
+                // Set arguments
                 for param in params {
                     let (reg, sub_inst) = self.expr(param);
                     inst.extend(sub_inst);
                     let arg_reg = arg_regs.pop().expect("Too many arguments");
                     inst.push(Move(arg_reg, reg));
                 }
-                inst.extend(vec![
-                    // Push return address on stack
-                    Addi(Sp, Sp, -4),
-                    Sw(Ra, 0, Sp),
-                    Jal(Label(fname.0.to_string())),
-                    // Pop return address from stack
-                    Lw(Ra, 0, Sp),
-                    Addi(Sp, Sp, 4),
-                ]);
+
+                // Make the call
+                inst.push(Jal(Label(fname.0.to_string())));
+
+                // Restore registers
+                for (i, reg) in BACKED_UP_REGS.iter().enumerate() {
+                    inst.push(Lw(*reg, i as i16 * 4, Sp));
+                }
+                inst.push(Addi(Sp, Sp, 4 * BACKED_UP_REGS.len() as i32));
                 (V0, inst)
             }
         }
@@ -195,7 +211,8 @@ impl<'a> Compiler<'a> {
     pub fn stmt(&mut self, stmt: &Stmt) -> Vec<MipsInst> {
         match stmt {
             Stmt::Expr(e) => self.expr(e).1,
-            Stmt::Fun(fname, _params, body) => {
+            Stmt::Fun(fname, params, body) => {
+                self.fn_params = params.to_vec();
                 let mut body_inst = Vec::new();
                 for stmt in body {
                     body_inst.extend(self.stmt(stmt));
@@ -449,6 +466,12 @@ pub enum Register {
     Ra,
 }
 use self::Register::*;
+
+impl Register {
+    pub fn args() -> [Register; 4] {
+        [A0, A1, A2, A3]
+    }
+}
 
 impl Display for Register {
     fn fmt(&self, f: &mut Formatter) -> Result<(), FormatError> {
