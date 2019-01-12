@@ -87,7 +87,7 @@ struct Compiler<'a> {
     name_gen: Generator<'a>,
     continue_label: Option<Label>,
     break_label: Option<Label>,
-    fn_params: Vec<Ident>,
+    fn_params: HashMap<Ident, Register>,
 }
 
 impl<'a> Compiler<'a> {
@@ -150,8 +150,9 @@ impl<'a> Compiler<'a> {
             }
             Expr::Ident(i) => {
                 let reg = self.temp_reg();
-                for (label, arg_reg) in self.fn_params.iter().zip(Register::args().into_iter()) {
+                for (label, arg_reg) in self.fn_params.iter() {
                     if label.0 == i.0 {
+                        // FIXME should not be necessary
                         return (reg, vec![Move(reg, *arg_reg)]);
                     }
                 }
@@ -180,7 +181,7 @@ impl<'a> Compiler<'a> {
                 arg_regs.reverse();
                 let mut inst = Vec::new();
                 const BACKED_UP_REGS: &'static [Register] =
-                    &[Ra, A0, A1, A2, A3, T0, T1, T2, T4, T5, T6, T7, T8, T9];
+                    &[Ra, T0, T1, T2, T3, T4, T5, T6, T7, T8, T9];
                 // Backup registers
                 inst.push(Addi(Sp, Sp, -4 * BACKED_UP_REGS.len() as i32));
                 for (i, reg) in BACKED_UP_REGS.iter().enumerate() {
@@ -193,6 +194,7 @@ impl<'a> Compiler<'a> {
                     inst.extend(sub_inst);
                     let arg_reg = arg_regs.pop().expect("Too many arguments");
                     inst.push(Move(arg_reg, reg));
+                    self.return_register(reg);
                 }
 
                 // Make the call
@@ -203,7 +205,9 @@ impl<'a> Compiler<'a> {
                     inst.push(Lw(*reg, i as i16 * 4, Sp));
                 }
                 inst.push(Addi(Sp, Sp, 4 * BACKED_UP_REGS.len() as i32));
-                (V0, inst)
+                let res_reg = self.temp_reg();
+                inst.push(Move(res_reg, V0));
+                (res_reg, inst)
             }
         }
     }
@@ -212,8 +216,13 @@ impl<'a> Compiler<'a> {
         match stmt {
             Stmt::Expr(e) => self.expr(e).1,
             Stmt::Fun(fname, params, body) => {
-                self.fn_params = params.to_vec();
                 let mut body_inst = Vec::new();
+                self.fn_params.clear();
+                for (param, arg_reg) in params.iter().zip(Register::args().iter()) {
+                    let reg = self.temp_reg();
+                    self.fn_params.insert(param.clone(), reg);
+                    body_inst.push(Move(reg, *arg_reg));
+                }
                 for stmt in body {
                     body_inst.extend(self.stmt(stmt));
                 }
@@ -262,6 +271,7 @@ impl<'a> Compiler<'a> {
             Stmt::Return(e) => {
                 let (reg, mut inst) = self.expr(e);
                 inst.push(Move(V0, reg));
+                self.return_register(reg);
                 inst
             }
             Stmt::While(cond, body) => {
@@ -312,6 +322,7 @@ impl<'a> Compiler<'a> {
             Stmt::For(var, expr, body) => {
                 let var = Label(var.0.clone());
                 self.data.insert(var.clone(), DataValue::Word(0));
+                // Need to be re-evaluated after every iteration
                 let (iter_reg, mut inst) = self.expr(expr);
                 let counter = self.temp_reg();
                 inst.push(Lw(counter, 0, iter_reg));
