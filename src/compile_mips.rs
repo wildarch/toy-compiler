@@ -87,7 +87,31 @@ struct Compiler<'a> {
     name_gen: Generator<'a>,
     continue_label: Option<Label>,
     break_label: Option<Label>,
-    fn_params: HashMap<Ident, Register>,
+    fn_vars: Vec<Ident>,
+}
+
+fn variables(body: &[Stmt], vars: &mut Vec<Ident>) {
+    for stmt in body {
+        match stmt {
+            Stmt::Assign(ident, _) => vars.push(ident.clone()),
+            Stmt::Break | Stmt::Continue | Stmt::Expr(_) | Stmt::Fun(_, _, _) | Stmt::Return(_) => {
+            }
+            Stmt::For(ident, _, body) => {
+                vars.push(ident.clone());
+                variables(body, vars);
+            }
+            Stmt::If(ifs) => {
+                for (_, ref body) in &ifs.cases {
+                    variables(body, vars);
+                }
+                if let Some(ref body) = ifs.else_case {
+                    variables(body, vars);
+                }
+            }
+            Stmt::Loop(body) => variables(body, vars),
+            Stmt::While(_, body) => variables(body, vars),
+        }
+    }
 }
 
 impl<'a> Compiler<'a> {
@@ -107,6 +131,34 @@ impl<'a> Compiler<'a> {
             .pop()
             .expect("No more registers available");
         r
+    }
+
+    fn hoist_variables(&mut self, body: &[Stmt], params: &[Ident]) -> Vec<MipsInst> {
+        self.fn_vars.clear();
+
+        let mut inst = Vec::new();
+
+        for (param, arg_reg) in params.iter().zip(Register::args().iter()) {
+            self.fn_vars.push(param.clone());
+            inst.push(Sw(*arg_reg, self.variable_offset(param).unwrap(), Sp));
+        }
+
+        variables(body, &mut self.fn_vars);
+        inst.insert(0, Addi(Sp, Sp, -4 * self.fn_vars.len() as i32));
+        inst
+    }
+
+    fn unhoist_variables(&self) -> Vec<MipsInst> {
+        vec![Addi(Sp, Sp, 4 * self.fn_vars.len() as i32)]
+    }
+
+    fn variable_offset(&self, ident: &Ident) -> Option<i16> {
+        let count = self.fn_vars.iter().take_while(|var| var != &ident).count() as i16;
+        if count as usize == self.fn_vars.len() {
+            None
+        } else {
+            Some(count * 4)
+        }
     }
 
     fn label(&mut self) -> Label {
@@ -148,16 +200,12 @@ impl<'a> Compiler<'a> {
                 let label = self.label();
                 self.put_lit(label, l)
             }
-            Expr::Ident(i) => {
+            Expr::Ident(ident) => {
                 let reg = self.temp_reg();
-                for (label, arg_reg) in self.fn_params.iter() {
-                    if label.0 == i.0 {
-                        // FIXME should not be necessary
-                        return (reg, vec![Move(reg, *arg_reg)]);
-                    }
+                if let Some(var_off) = self.variable_offset(ident) {
+                    return (reg, vec![Lw(reg, var_off, Sp)]);
                 }
-                let label = Label(i.0.clone());
-                (reg, vec![La(reg, label), Lw(reg, 0, reg)])
+                panic!("Could not find variable: {}", ident.0)
             }
             Expr::BinOp(a, op, b) => {
                 let mut inst = Vec::new();
@@ -181,10 +229,6 @@ impl<'a> Compiler<'a> {
                 arg_regs.reverse();
                 let mut inst = Vec::new();
 
-                // Backup return addr
-                inst.push(Addi(Sp, Sp, -4));
-                inst.push(Sw(Ra, 0, Sp));
-
                 // Set arguments
                 for param in params {
                     let (reg, sub_inst) = self.expr(param);
@@ -193,6 +237,10 @@ impl<'a> Compiler<'a> {
                     inst.push(Move(arg_reg, reg));
                     self.return_register(reg);
                 }
+
+                // Backup return addr
+                inst.push(Addi(Sp, Sp, -4));
+                inst.push(Sw(Ra, 0, Sp));
 
                 // Make the call
                 inst.push(Jal(Label(fname.0.to_string())));
@@ -213,14 +261,19 @@ impl<'a> Compiler<'a> {
             Stmt::Expr(e) => self.expr(e).1,
             Stmt::Fun(fname, params, body) => {
                 let mut body_inst = Vec::new();
+
+                // Backup registers
                 const BACKED_UP_REGS: &'static [Register] =
                     &[T0, T1, T2, T3, T4, T5, T6, T7, T8, T9];
-                // Backup registers
                 body_inst.push(Addi(Sp, Sp, -4 * BACKED_UP_REGS.len() as i32));
                 for (i, reg) in BACKED_UP_REGS.iter().enumerate() {
                     body_inst.push(Sw(*reg, i as i16 * 4, Sp));
                 }
 
+                // Hoist variables
+                body_inst.extend(self.hoist_variables(body, params));
+
+                /*
                 // Load function parameters
                 self.fn_params.clear();
                 for (param, arg_reg) in params.iter().zip(Register::args().iter()) {
@@ -228,11 +281,15 @@ impl<'a> Compiler<'a> {
                     self.fn_params.insert(param.clone(), reg);
                     body_inst.push(Move(reg, *arg_reg));
                 }
+                */
 
                 // Process function body
                 for stmt in body {
                     body_inst.extend(self.stmt(stmt));
                 }
+
+                // Unhoist variables
+                body_inst.extend(self.unhoist_variables());
 
                 // Restore registers
                 for (i, reg) in BACKED_UP_REGS.iter().enumerate() {
@@ -253,13 +310,12 @@ impl<'a> Compiler<'a> {
                 // Put into the text section instead
                 vec![]
             }
-            Stmt::Assign(i, e) => {
-                let (reg, mut inst) = self.expr(e);
-                let label = Label(i.0.clone());
-                if !self.data.contains_key(&label) {
-                    self.data.insert(label.clone(), DataValue::Word(0));
-                }
-                inst.extend(vec![La(A0, label), Sw(reg, 0, A0)]);
+            Stmt::Assign(ident, expr) => {
+                let (reg, mut inst) = self.expr(expr);
+                let var_off = self
+                    .variable_offset(ident)
+                    .expect(&format!("Could not find variable: {}", ident.0));
+                inst.push(Sw(reg, var_off, Sp));
                 self.return_register(reg);
                 inst
             }
@@ -337,11 +393,10 @@ impl<'a> Compiler<'a> {
                 inst
             }
             Stmt::For(var, expr, body) => {
-                let var = Label(var.0.clone());
-                self.data.insert(var.clone(), DataValue::Word(0));
-                // Need to be re-evaluated after every iteration
+                // TODO Need to be re-evaluated after every iteration
                 let (iter_reg, mut inst) = self.expr(expr);
                 let counter = self.temp_reg();
+                // Load list length
                 inst.push(Lw(counter, 0, iter_reg));
 
                 // Loop setup
@@ -353,13 +408,14 @@ impl<'a> Compiler<'a> {
 
                 // Move to the next item
                 inst.push(Addi(iter_reg, iter_reg, 4));
-                let addr_reg = self.temp_reg();
-                inst.push(La(addr_reg, var));
+
                 let val_reg = self.temp_reg();
                 inst.push(Lw(val_reg, 0, iter_reg));
-                inst.push(Sw(val_reg, 0, addr_reg));
+                let var_off = self
+                    .variable_offset(&var)
+                    .expect(&format!("failed to find variable: {}", var.0));
+                inst.push(Sw(val_reg, var_off, Sp));
                 self.return_register(val_reg);
-                self.return_register(addr_reg);
 
                 // Check and then decrement counter
                 inst.push(Ble(counter, Zero, end_label.clone()));

@@ -31,6 +31,7 @@ fn verify_program_output(program: &str, expected_output: &str) {
         .find(target)
         .expect("load exception header not found");
     let output = output.split_off(newline + target.len());
+    println!("{}", output);
     assert_eq!(output, expected_output);
 }
 
@@ -88,5 +89,31 @@ fun main():
 832040
 9227465
 "#;
+    verify_program_output(program, output);
+}
+
+#[test]
+fn print_string() {
+    let program = r#"
+fun main():
+    str = "Hello, world!"
+    print(str)
+"#;
+    let output = "Hello, world!\n";
+    verify_program_output(program, output);
+}
+
+#[test]
+fn variable_aliasing() {
+    let program = r#"
+fun sub_fn(a):
+    print_int(a)
+    a = 2
+    print_int(a)
+
+fun main():
+    sub_fn(1)
+"#;
+    let output = "1\n2\n";
     verify_program_output(program, output);
 }
