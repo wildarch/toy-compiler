@@ -26,8 +26,11 @@ fn verify_program_output(program: &str, expected_output: &str) {
         .expect("failed to execute spim")
         .stdout;
     let mut output = String::from_utf8(output).expect("output was not valid utf-8");
-    let newline = output.find("\n").expect("no newline in output");
-    let output = output.split_off(newline + 1);
+    let target = "exceptions.s\n";
+    let newline = output
+        .find(target)
+        .expect("load exception header not found");
+    let output = output.split_off(newline + target.len());
     assert_eq!(output, expected_output);
 }
 
