@@ -6,3 +6,4 @@ authors = ["Daan de Graaf <daandegraaf9@gmail.com>"]
 [dependencies]
 nom = "4.0.0"
 names = "0.11.0"
+tempfile = "3.0"

@@ -1,0 +1,62 @@
+extern crate tempfile;
+extern crate toy_compiler;
+
+use std::io::Write;
+use std::process::Command;
+use tempfile::NamedTempFile;
+use toy_compiler::compile_mips;
+use toy_compiler::parse;
+
+fn verify_program_output(program: &str, expected_output: &str) {
+    let parsed = parse::parse(program).expect("failed to parse");
+    let compiled = compile_mips::compile(parsed).expect("failed to compile for mips");
+    let mut file = NamedTempFile::new().expect("failed to create temporary file");
+    file.write(compiled.to_string().as_bytes())
+        .expect("failed to write program to file");
+
+    let path = file
+        .path()
+        .to_str()
+        .expect("failed to get path to temporary file");
+
+    let output = Command::new("spim")
+        .arg("-file")
+        .arg(path)
+        .output()
+        .expect("failed to execute spim")
+        .stdout;
+    let mut output = String::from_utf8(output).expect("output was not valid utf-8");
+    let newline = output.find("\n").expect("no newline in output");
+    let output = output.split_off(newline + 1);
+    assert_eq!(output, expected_output);
+}
+
+#[test]
+fn recursion_fibonacci() {
+    let program = r#"
+fun fib(n):
+    if n == 0:
+        return 0
+    elif n == 1:
+        return 1
+    else:
+        return fib(n-2) + fib(n-1)
+
+fun main():
+    for i in [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]:
+        print_int(fib(i))
+"#;
+    let output = r#"0
+1
+1
+2
+3
+5
+8
+13
+21
+34
+55
+"#;
+    verify_program_output(program, output);
+}
