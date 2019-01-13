@@ -180,13 +180,10 @@ impl<'a> Compiler<'a> {
                 let mut arg_regs = Register::args().to_vec();
                 arg_regs.reverse();
                 let mut inst = Vec::new();
-                const BACKED_UP_REGS: &'static [Register] =
-                    &[Ra, T0, T1, T2, T3, T4, T5, T6, T7, T8, T9];
-                // Backup registers
-                inst.push(Addi(Sp, Sp, -4 * BACKED_UP_REGS.len() as i32));
-                for (i, reg) in BACKED_UP_REGS.iter().enumerate() {
-                    inst.push(Sw(*reg, i as i16 * 4, Sp));
-                }
+
+                // Backup return addr
+                inst.push(Addi(Sp, Sp, -4));
+                inst.push(Sw(Ra, 0, Sp));
 
                 // Set arguments
                 for param in params {
@@ -200,11 +197,10 @@ impl<'a> Compiler<'a> {
                 // Make the call
                 inst.push(Jal(Label(fname.0.to_string())));
 
-                // Restore registers
-                for (i, reg) in BACKED_UP_REGS.iter().enumerate() {
-                    inst.push(Lw(*reg, i as i16 * 4, Sp));
-                }
-                inst.push(Addi(Sp, Sp, 4 * BACKED_UP_REGS.len() as i32));
+                // Restore return addr
+                inst.push(Lw(Ra, 0, Sp));
+                inst.push(Addi(Sp, Sp, 4));
+
                 let res_reg = self.temp_reg();
                 inst.push(Move(res_reg, V0));
                 (res_reg, inst)
@@ -217,16 +213,37 @@ impl<'a> Compiler<'a> {
             Stmt::Expr(e) => self.expr(e).1,
             Stmt::Fun(fname, params, body) => {
                 let mut body_inst = Vec::new();
+                const BACKED_UP_REGS: &'static [Register] =
+                    &[T0, T1, T2, T3, T4, T5, T6, T7, T8, T9];
+                // Backup registers
+                body_inst.push(Addi(Sp, Sp, -4 * BACKED_UP_REGS.len() as i32));
+                for (i, reg) in BACKED_UP_REGS.iter().enumerate() {
+                    body_inst.push(Sw(*reg, i as i16 * 4, Sp));
+                }
+
+                // Load function parameters
                 self.fn_params.clear();
                 for (param, arg_reg) in params.iter().zip(Register::args().iter()) {
                     let reg = self.temp_reg();
                     self.fn_params.insert(param.clone(), reg);
                     body_inst.push(Move(reg, *arg_reg));
                 }
+
+                // Process function body
                 for stmt in body {
                     body_inst.extend(self.stmt(stmt));
                 }
+
+                // Restore registers
+                for (i, reg) in BACKED_UP_REGS.iter().enumerate() {
+                    body_inst.push(Lw(*reg, i as i16 * 4, Sp));
+                }
+                body_inst.push(Addi(Sp, Sp, 4 * BACKED_UP_REGS.len() as i32));
+
+                // Return call
                 body_inst.push(Jr(Ra));
+
+                // Override the name of the main function
                 let fname = if fname.0 == "main" {
                     "program_main".to_string()
                 } else {

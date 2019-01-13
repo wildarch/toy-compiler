@@ -60,3 +60,30 @@ fun main():
 "#;
     verify_program_output(program, output);
 }
+
+#[test]
+fn while_fibonacci() {
+    let program = r#"
+fun fib(n):
+    a = 0
+    a2 = 1
+    c = 0
+    while c < n:
+        c = c + 1
+        t = a + a2
+        a = a2
+        a2 = t
+    return a
+        
+
+fun main():
+    for i in [10, 20, 30, 35]:
+        print_int(fib(i))
+"#;
+    let output = r#"55
+6765
+832040
+9227465
+"#;
+    verify_program_output(program, output);
+}

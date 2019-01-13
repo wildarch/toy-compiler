@@ -5,15 +5,19 @@ use toy_compiler::parse;
 fn main() {
     let program = r#"
 fun fib(n):
-    if n == 0:
-        return 0
-    elif n == 1:
-        return 1
-    else:
-        return fib(n-2) + fib(n-1)
+    a = 0
+    a2 = 1
+    c = 0
+    while c < n:
+        c = c + 1
+        t = a + a2
+        a = a2
+        a2 = t
+    return a
+        
 
 fun main():
-    for i in [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]:
+    for i in [10, 20, 30, 35]:
         print_int(fib(i))
 "#;
     let parsed = parse::parse(program).expect("failed to parse");
