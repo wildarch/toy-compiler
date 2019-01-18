@@ -1,5 +1,4 @@
 extern crate toy_compiler;
-use toy_compiler::mips;
 use toy_compiler::parse;
 
 fn main() {
@@ -9,6 +8,5 @@ fun main():
     print_int(a)
 "#;
     let parsed = parse::parse(program).expect("failed to parse");
-    let compiled = mips::compile(parsed).expect("failed to compile for mips");
-    println!("{}", compiled);
+    println!("Parsed: {:#?}", parsed);
 }

@@ -13,7 +13,7 @@ pub enum Expr {
 }
 use self::Expr::*;
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub enum Op {
     Add,
     Min,
