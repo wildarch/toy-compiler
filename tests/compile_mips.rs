@@ -4,12 +4,12 @@ extern crate toy_compiler;
 use std::io::Write;
 use std::process::Command;
 use tempfile::NamedTempFile;
-use toy_compiler::compile_mips;
+use toy_compiler::mips;
 use toy_compiler::parse;
 
 fn verify_program_output(program: &str, expected_output: &str) {
     let parsed = parse::parse(program).expect("failed to parse");
-    let compiled = compile_mips::compile(parsed).expect("failed to compile for mips");
+    let compiled = mips::compile(parsed).expect("failed to compile for mips");
     let mut file = NamedTempFile::new().expect("failed to create temporary file");
     file.write(compiled.to_string().as_bytes())
         .expect("failed to write program to file");
