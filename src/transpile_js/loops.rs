@@ -1,4 +1,4 @@
-use parse::{Expr, Ident, Stmt};
+use crate::parse::{Expr, Ident, Stmt};
 
 use super::common::indent;
 use super::expression::transpile_expr;
@@ -44,12 +44,12 @@ pub fn transpile_for(var: Ident, list: Expr, body: Vec<Stmt>, indent_level: usiz
 
 #[cfg(test)]
 mod tests {
-    use parse::Expr;
-    use parse::Expr::*;
-    use parse::Ident;
-    use parse::Lit::*;
-    use parse::Op::*;
-    use parse::Stmt::*;
+     use crate::parse::Expr;
+     use crate::parse::Expr::*;
+     use crate::parse::Ident;
+     use crate::parse::Lit::*;
+     use crate::parse::Op::*;
+     use crate::parse::Stmt::*;
 
     #[test]
     fn transpile_while() {

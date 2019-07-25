@@ -4,7 +4,7 @@ pub mod label;
 pub mod compiler;
 pub mod program;
 
-use parse::Document;
+use crate::parse::Document;
 use self::program::Program;
 use self::compiler::Compiler;
 

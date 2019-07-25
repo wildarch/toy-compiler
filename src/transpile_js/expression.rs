@@ -1,6 +1,6 @@
-use parse::Expr::*;
-use parse::Op::*;
-use parse::{Expr, Ident, Op};
+use crate::parse::Expr::*;
+use crate::parse::Op::*;
+use crate::parse::{Expr, Ident, Op};
 
 use super::identifier::transpile_ident;
 use super::literal::transpile_lit;
@@ -36,10 +36,10 @@ fn transpile_binop(op: Op) -> String {
 
 #[cfg(test)]
 mod tests {
-    use parse::Expr::*;
-    use parse::Lit::*;
-    use parse::Op::*;
-    use parse::{Expr, Ident};
+    use crate::parse::Expr::*;
+    use crate::parse::Lit::*;
+    use crate::parse::Op::*;
+    use crate::parse::{Expr, Ident};
 
     #[test]
     fn transpile_binop() {

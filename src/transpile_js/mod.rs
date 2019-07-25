@@ -8,7 +8,7 @@ mod loops;
 mod statement;
 
 use self::statement::transpile_stmts;
-use parse::Document;
+use crate::parse::Document;
 
 const STANDARD_LIB: &'static str = r#"
 function print(x) {

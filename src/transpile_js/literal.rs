@@ -1,5 +1,5 @@
-use parse::Lit::*;
-use parse::{Expr, Lit};
+use crate::parse::Lit::*;
+use crate::parse::{Expr, Lit};
 
 use super::expression::transpile_expr;
 
@@ -20,7 +20,8 @@ fn transpile_list(vals: Vec<Expr>) -> String {
 
 #[cfg(test)]
 mod tests {
-    use parse::Lit::*;
+    use crate::parse::Lit::*;
+
     #[test]
     fn transpile_lit() {
         assert_eq!(super::transpile_lit(Int(1)), "1");

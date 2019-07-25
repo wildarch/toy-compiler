@@ -1,4 +1,4 @@
-use parse::{Ident, Stmt};
+use crate::parse::{Ident, Stmt};
 
 use super::common::indent;
 use super::statement::transpile_stmts;
@@ -27,10 +27,10 @@ pub fn transpile_fun(
 
 #[cfg(test)]
 mod tests {
-    use parse::Expr::*;
-    use parse::Ident;
-    use parse::Lit::*;
-    use parse::Stmt::*;
+    use crate::parse::Expr::*;
+    use crate::parse::Ident;
+    use crate::parse::Lit::*;
+    use crate::parse::Stmt::*;
 
     #[test]
     fn transpile_fun() {

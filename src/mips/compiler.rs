@@ -1,4 +1,4 @@
-use parse::{Ident, Expr, Stmt, Lit, Op};
+use crate::parse::{Ident, Expr, Stmt, Lit, Op};
 use super::program::{DataValue, Program};
 use super::instruction::Instruction::{self, *};
 use super::register::Register::{self, *};

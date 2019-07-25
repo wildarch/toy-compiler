@@ -1,4 +1,4 @@
-use parse::{Expr, If, Stmt};
+use crate::parse::{Expr, If, Stmt};
 
 use super::common::indent;
 use super::expression::transpile_expr;
@@ -54,13 +54,13 @@ fn transpile_elif(cond: Expr, body: Vec<Stmt>, indent_level: usize) -> Vec<Strin
 
 #[cfg(test)]
 mod tests {
-    use parse::Expr;
-    use parse::Expr::*;
-    use parse::Ident;
-    use parse::If;
-    use parse::Lit::*;
-    use parse::Op::*;
-    use parse::Stmt::*;
+    use crate::parse::Expr;
+    use crate::parse::Expr::*;
+    use crate::parse::Ident;
+    use crate::parse::If;
+    use crate::parse::Lit::*;
+    use crate::parse::Op::*;
+    use crate::parse::Stmt::*;
 
     #[test]
     fn transpile_if() {

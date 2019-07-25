@@ -1,4 +1,4 @@
-use parse::Ident;
+use crate::parse::Ident;
 
 const JS_KEYWORDS: &'static [&'static str] = &[
     "do",
@@ -61,7 +61,7 @@ pub fn transpile_ident(i: Ident) -> String {
 
 #[cfg(test)]
 mod tests {
-    use parse::Ident;
+    use crate::parse::Ident;
 
     #[test]
     fn transpile_ident() {
